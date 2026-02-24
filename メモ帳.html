@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>HTML Notepad</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #000000;
+    --menu-bg: #f0f0f0;
+    --menu-hover: #dcdcdc;
+    --editor-bg: #ffffff;
+  }
+
+  body.dark {
+    --bg: #1e1e1e;
+    --fg: #e0e0e0;
+    --menu-bg: #2d2d2d;
+    --menu-hover: #3a3a3a;
+    --editor-bg: #252526;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Yu Gothic UI", sans-serif;
+  }
+
+  /* メニューバー（適度に大きめ） */
+  #menubar {
+    background: var(--menu-bg);
+    border-bottom: 1px solid #888;
+    padding: 4px 10px;
+    display: flex;
+    gap: 22px;
+    font-size: 16px;
+    user-select: none;
+    height: 28px;
+    align-items: center;
+  }
+  #menubar > div {
+    position: relative;
+    padding: 3px 6px;
+    cursor: default;
+  }
+  #menubar > div:hover {
+    background: var(--menu-hover);
+  }
+
+  /* プルダウンメニュー */
+  .menu {
+    display: none;
+    position: absolute;
+    top: 28px;
+    left: 0;
+    background: var(--menu-bg);
+    border: 1px solid #888;
+    min-width: 170px;
+    z-index: 10;
+    font-size: 15px;
+  }
+  .menu div {
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .menu div:hover {
+    background: var(--menu-hover);
+  }
+
+  /* エディタ */
+  #editor {
+    width: 100vw;
+    height: calc(100vh - 28px);
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 12px;
+    font-size: 15px;
+    font-family: "Consolas", "MS Gothic", monospace;
+    box-sizing: border-box;
+    background: var(--editor-bg);
+    color: var(--fg);
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<div id="menubar">
+  <div onclick="toggleMenu('fileMenu', event)">ファイル
+    <div id="fileMenu" class="menu">
+      <div onclick="openFile()">開く</div>
+      <div onclick="saveFile(false)">上書き保存</div>
+      <div onclick="saveFile(true)">名前を付けて保存</div>
+    </div>
+  </div>
+
+  <div onclick="toggleMenu('editMenu', event)">編集
+    <div id="editMenu" class="menu">
+      <div onclick="document.execCommand('undo')">元に戻す</div>
+      <div onclick="document.getElementById('editor').select()">すべて選択</div>
+    </div>
+  </div>
+
+  <div onclick="toggleMenu('viewMenu', event)">表示
+    <div id="viewMenu" class="menu">
+      <div onclick="toggleWrap()">折り返し ON/OFF</div>
+      <div onclick="toggleDark()">ダークモード ON/OFF</div>
+    </div>
+  </div>
+
+  <div onclick="toggleMenu('helpMenu', event)">ヘルプ
+    <div id="helpMenu" class="menu">
+      <div onclick="alert('HTML Notepad - frisk edition')">バージョン情報</div>
+    </div>
+  </div>
+</div>
+
+<textarea id="editor"></textarea>
+
+<input type="file" id="fileInput" style="display:none"
+accept=".txt,.cs,.html,.htm,.js,.ts,.json,.c,.cpp,.h,.py,.md,.fs,.css,.xml,.yml,.yaml">
+
+<script>
+let openMenuId = null;
+
+/* メニュー開閉 */
+function toggleMenu(id, event) {
+  event.stopPropagation();
+  if (openMenuId === id) {
+    document.getElementById(id).style.display = "none";
+    openMenuId = null;
+    return;
+  }
+  if (openMenuId) {
+    document.getElementById(openMenuId).style.display = "none";
+  }
+  document.getElementById(id).style.display = "block";
+  openMenuId = id;
+}
+
+document.querySelectorAll(".menu").forEach(menu => {
+  menu.addEventListener("click", e => e.stopPropagation());
+});
+
+document.addEventListener("click", () => {
+  if (openMenuId) {
+    document.getElementById(openMenuId).style.display = "none";
+    openMenuId = null;
+  }
+});
+
+/* ファイル開く */
+function openFile() {
+  const input = document.getElementById("fileInput");
+  input.value = "";
+  input.click();
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      document.getElementById("editor").value = reader.result;
+    };
+    reader.readAsText(file);
+  };
+}
+
+/* 保存 */
+function saveFile(forceNewName) {
+  const text = document.getElementById("editor").value;
+  let fileName = "memo.txt";
+
+  if (forceNewName) {
+    const name = prompt("ファイル名を入力してください", fileName);
+    if (!name) return;
+    fileName = name;
+  }
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* 折り返し */
+let wrap = true;
+function toggleWrap() {
+  wrap = !wrap;
+  document.getElementById("editor").style.whiteSpace = wrap ? "pre-wrap" : "pre";
+}
+
+/* ダークモード */
+function toggleDark() {
+  document.body.classList.toggle("dark");
+}
+
+/* Ctrl+S 保存 */
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key === "s") {
+    e.preventDefault();
+    saveFile(false);
+  }
+});
+</script>
+
+</body>
+</html>
