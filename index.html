@@ -1,212 +1,208 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>HTML Notepad</title>
+<title>HTML Notepad v2.0.0 - frisk edition</title>
 <style>
   :root {
-    --bg: #ffffff;
-    --fg: #000000;
-    --menu-bg: #f0f0f0;
-    --menu-hover: #dcdcdc;
-    --editor-bg: #ffffff;
+    --bg: #ffffff; --fg: #000000; --menu-bg: #f0f0f0; --menu-hover: #dcdcdc;
+    --editor-bg: #ffffff; --status-bg: #f0f0f0; --keyword: #0000ff; --string: #a31515; --comment: #008000;
   }
-
   body.dark {
-    --bg: #1e1e1e;
-    --fg: #e0e0e0;
-    --menu-bg: #2d2d2d;
-    --menu-hover: #3a3a3a;
-    --editor-bg: #252526;
+    --bg: #1e1e1e; --fg: #e0e0e0; --menu-bg: #2d2d2d; --menu-hover: #3a3a3a;
+    --editor-bg: #1e1e1e; --status-bg: #007acc; --keyword: #569cd6; --string: #ce9178; --comment: #6a9955;
   }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Yu Gothic UI", sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #menubar { background: var(--menu-bg); border-bottom: 1px solid #888; padding: 0 10px; display: flex; gap: 5px; font-size: 13px; height: 30px; align-items: center; user-select: none; flex-shrink: 0; z-index: 1000; }
+  #menubar > div { position: relative; padding: 4px 10px; cursor: default; }
+  #menubar > div:hover { background: var(--menu-hover); }
+  .menu { display: none; position: absolute; top: 30px; left: 0; background: var(--menu-bg); border: 1px solid #888; min-width: 240px; box-shadow: 3px 3px 10px rgba(0,0,0,0.2); z-index: 1001; }
+  .menu div { padding: 7px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .menu div:hover { background: var(--menu-hover); }
+  .shortcut { color: #888; font-size: 11px; }
 
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: "Yu Gothic UI", sans-serif;
+  #main-container { flex: 1; display: flex; position: relative; overflow: hidden; background: var(--editor-bg); }
+  #editor-wrapper { flex: 1; position: relative; }
+  
+  /* 共通のフォント設定 */
+  #editor, #highlight {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 15px;
+    border: none; outline: none; font-size: 16px; font-family: "Consolas", monospace;
+    line-height: 1.5; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; tab-size: 2;
   }
-
-  /* メニューバー（適度に大きめ） */
-  #menubar {
-    background: var(--menu-bg);
-    border-bottom: 1px solid #888;
-    padding: 4px 10px;
-    display: flex;
-    gap: 22px;
-    font-size: 16px;
-    user-select: none;
-    height: 28px;
-    align-items: center;
-  }
-  #menubar > div {
-    position: relative;
-    padding: 3px 6px;
-    cursor: default;
-  }
-  #menubar > div:hover {
-    background: var(--menu-hover);
-  }
-
-  /* プルダウンメニュー */
-  .menu {
-    display: none;
-    position: absolute;
-    top: 28px;
-    left: 0;
-    background: var(--menu-bg);
-    border: 1px solid #888;
-    min-width: 170px;
-    z-index: 10;
-    font-size: 15px;
-  }
-  .menu div {
-    padding: 8px 12px;
-    cursor: pointer;
-  }
-  .menu div:hover {
-    background: var(--menu-hover);
-  }
-
-  /* エディタ */
   #editor {
-    width: 100vw;
-    height: calc(100vh - 28px);
-    border: none;
-    outline: none;
-    resize: none;
-    padding: 12px;
-    font-size: 15px;
-    font-family: "Consolas", "MS Gothic", monospace;
-    box-sizing: border-box;
-    background: var(--editor-bg);
-    color: var(--fg);
-    white-space: pre-wrap;
+    color: transparent; /* 入力文字を透明にして下の色付けを見せる */
+    background: transparent;
+    caret-color: var(--fg); /* カーソルだけ表示 */
+    z-index: 2; resize: none;
   }
+  #highlight {
+    color: var(--fg); /* ここで実際に文字の色を出す */
+    z-index: 1; pointer-events: none;
+  }
+
+  /* 色分けルール */
+  .hl-kw { color: var(--keyword); font-weight: bold; }
+  .hl-str { color: var(--string); }
+  .hl-com { color: var(--comment); }
+
+  #media-panel { width: 350px; border-left: 1px solid #888; background: var(--menu-bg); overflow-y: auto; padding: 15px; display: none; }
+  .media-item { margin-bottom: 20px; border-bottom: 1px dashed #888; padding-bottom: 10px; }
+  .media-item img, .media-item video { max-width: 100%; display: block; margin-top: 5px; }
+
+  #statusbar { background: var(--status-bg); color: var(--fg); font-size: 12px; padding: 3px 20px; display: flex; justify-content: flex-end; gap: 25px; border-top: 1px solid #888; flex-shrink: 0; }
 </style>
 </head>
 <body>
-
 <div id="menubar">
   <div onclick="toggleMenu('fileMenu', event)">ファイル
     <div id="fileMenu" class="menu">
-      <div onclick="openFile()">開く</div>
-      <div onclick="saveFile(false)">上書き保存</div>
+      <div onclick="newFile()">新規作成 <span class="shortcut">Ctrl+N</span></div>
+      <div onclick="openFile()">開く <span class="shortcut">Ctrl+O</span></div>
+      <div onclick="saveFile(false)">上書き保存 <span class="shortcut">Ctrl+S</span></div>
       <div onclick="saveFile(true)">名前を付けて保存</div>
+      <div onclick="toggleAutosave()">オートセーブ: <span id="autoSaveStatus">OFF</span></div>
     </div>
   </div>
-
   <div onclick="toggleMenu('editMenu', event)">編集
     <div id="editMenu" class="menu">
-      <div onclick="document.execCommand('undo')">元に戻す</div>
-      <div onclick="document.getElementById('editor').select()">すべて選択</div>
+      <div onclick="document.execCommand('undo')">元に戻す <span class="shortcut">Ctrl+Z</span></div>
+      <div onclick="findText()">全文検索 <span class="shortcut">Ctrl+F</span></div>
+      <div onclick="replaceText()">一括置換 <span class="shortcut">Ctrl+H</span></div>
+      <div onclick="insertMedia()">メディアを埋め込む</div>
     </div>
   </div>
-
   <div onclick="toggleMenu('viewMenu', event)">表示
     <div id="viewMenu" class="menu">
-      <div onclick="toggleWrap()">折り返し ON/OFF</div>
-      <div onclick="toggleDark()">ダークモード ON/OFF</div>
+      <div onclick="toggleWrap()">折り返し切替</div>
+      <div onclick="toggleDark()">ダークモード切替</div>
+      <div onclick="toggleMediaPanel()">パネル表示/非表示</div>
     </div>
   </div>
-
+  <div onclick="toggleMenu('extMenu', event)">拡張機能 (β)
+    <div id="extMenu" class="menu"><div onclick="runExtension()">JSを実行</div></div>
+  </div>
   <div onclick="toggleMenu('helpMenu', event)">ヘルプ
-    <div id="helpMenu" class="menu">
-      <div onclick="alert('HTML Notepad - frisk edition')">バージョン情報</div>
-    </div>
+    <div id="helpMenu" class="menu"><div onclick="alert('HTML Notepad v2.0.0\n.LOG対応/メディア対応/リアルタイム文字数')">バージョン情報</div></div>
   </div>
 </div>
-
-<textarea id="editor"></textarea>
-
-<input type="file" id="fileInput" style="display:none"
-accept=".txt,.cs,.html,.htm,.js,.ts,.json,.c,.cpp,.h,.py,.md,.fs,.css,.xml,.yml,.yaml">
-
+<div id="main-container">
+  <div id="editor-wrapper">
+    <div id="highlight"></div>
+    <textarea id="editor" spellcheck="false"></textarea>
+  </div>
+  <div id="media-panel"><h3>埋め込みメディア</h3></div>
+</div>
+<div id="statusbar"><span id="lineCol">行 1、列 1</span><span id="charCount">0 文字</span></div>
 <script>
-let openMenuId = null;
+let fileHandle = null, openMenuId = null, autoSaveInterval = null;
+const editor = document.getElementById("editor"), highlight = document.getElementById("highlight"), mediaPanel = document.getElementById("media-panel");
 
-/* メニュー開閉 */
+/* 1. メニュー制御 */
 function toggleMenu(id, event) {
   event.stopPropagation();
-  if (openMenuId === id) {
-    document.getElementById(id).style.display = "none";
-    openMenuId = null;
-    return;
-  }
-  if (openMenuId) {
-    document.getElementById(openMenuId).style.display = "none";
-  }
-  document.getElementById(id).style.display = "block";
-  openMenuId = id;
+  if (openMenuId === id) { document.getElementById(id).style.display = "none"; openMenuId = null; }
+  else { if (openMenuId) document.getElementById(openMenuId).style.display = "none"; document.getElementById(id).style.display = "block"; openMenuId = id; }
+}
+document.onclick = () => { if (openMenuId) { document.getElementById(openMenuId).style.display = "none"; openMenuId = null; } };
+
+/* 2. ファイル操作 */
+async function newFile() { if (confirm("新規作成しますか？")) { editor.value = ""; fileHandle = null; document.title = "HTML Notepad v2.0.0"; applyHighlight(); updateStatus(); } }
+async function openFile() {
+  try {
+    [fileHandle] = await window.showOpenFilePicker();
+    const file = await fileHandle.getFile();
+    let text = await file.text();
+    if (text.startsWith(".LOG")) text += "\n" + new Date().toLocaleString() + " - ";
+    editor.value = text;
+    document.title = file.name + " - HTML Notepad";
+    applyHighlight(); updateStatus();
+  } catch (e) {}
+}
+async function saveFile(force) {
+  try {
+    if (force || !fileHandle) fileHandle = await window.showSaveFilePicker({ suggestedName: 'memo.txt' });
+    const writable = await fileHandle.createWritable();
+    await writable.write(editor.value); await writable.close();
+    document.title = (await fileHandle.getFile()).name + " - HTML Notepad";
+  } catch (e) {}
 }
 
-document.querySelectorAll(".menu").forEach(menu => {
-  menu.addEventListener("click", e => e.stopPropagation());
-});
+/* 3. 編集・検索・拡張 */
+function findText() { const t = prompt("検索:"); if (t && !editor.value.includes(t)) alert("見つかりません"); }
+function replaceText() { const o = prompt("置換前:"), n = prompt("置換後:"); if (o !== null && n !== null) { editor.value = editor.value.split(o).join(n); applyHighlight(); updateStatus(); } }
+function runExtension() {
+  const code = prompt("コードをここに書いてください\n例: editor.style.fontSize = '20px';");
+  if (code) { try { eval(code); } catch (e) { alert("エラー: " + e); } }
+}
 
-document.addEventListener("click", () => {
-  if (openMenuId) {
-    document.getElementById(openMenuId).style.display = "none";
-    openMenuId = null;
-  }
-});
-
-/* ファイル開く */
-function openFile() {
-  const input = document.getElementById("fileInput");
-  input.value = "";
-  input.click();
-  input.onchange = () => {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      document.getElementById("editor").value = reader.result;
-    };
-    reader.readAsText(file);
+/* 4. メディア埋め込み (ファイル選択) */
+function insertMedia() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*,video/*,audio/*,application/pdf';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const url = URL.createObjectURL(file);
+    mediaPanel.style.display = "block";
+    let content = "";
+    if (file.type === "application/pdf") content = `<embed src="${url}" type="application/pdf" width="100%" height="400px">`;
+    else if (file.type.startsWith("video/")) content = `<video src="${url}" controls style="width:100%"></video>`;
+    else if (file.type.startsWith("audio/")) content = `<audio src="${url}" controls style="width:100%"></audio>`;
+    else content = `<img src="${url}" style="width:100%">`;
+    mediaPanel.innerHTML += `<div class="media-item"><strong>${file.name}</strong>${content}</div>`;
   };
+  input.click();
 }
 
-/* 保存 */
-function saveFile(forceNewName) {
-  const text = document.getElementById("editor").value;
-  let fileName = "memo.txt";
+/* 5. 色分け・ステータス更新 (ここが文字数と色に直結) */
+function applyHighlight() {
+  let code = editor.value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\b(const|let|var|function|if|else|return|await|async|class|new|try|catch)\b/g, '<span class="hl-kw">$1</span>')
+    .replace(/(".*?"|'.*?'|`.*?`)/g, '<span class="hl-str">$1</span>')
+    .replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span class="hl-com">$1</span>');
+  highlight.innerHTML = code + "\n";
+  highlight.scrollTop = editor.scrollTop; highlight.scrollLeft = editor.scrollLeft;
+}
 
-  if (forceNewName) {
-    const name = prompt("ファイル名を入力してください", fileName);
-    if (!name) return;
-    fileName = name;
+function updateStatus() {
+  const text = editor.value;
+  const lines = text.substr(0, editor.selectionStart).split("\n");
+  document.getElementById("lineCol").innerText = `行 ${lines.length}、列 ${lines[lines.length - 1].length + 1}`;
+  document.getElementById("charCount").innerText = `${text.length} 文字`;
+}
+
+/* 6. 設定・同期 */
+function toggleAutosave() {
+  const s = document.getElementById("autoSaveStatus");
+  if (autoSaveInterval) { clearInterval(autoSaveInterval); autoSaveInterval = null; s.innerText = "OFF"; }
+  else { autoSaveInterval = setInterval(() => { if (fileHandle) saveFile(false); }, 30000); s.innerText = "ON (30s)"; }
+}
+function toggleMediaPanel() { mediaPanel.style.display = (mediaPanel.style.display === "none") ? "block" : "none"; }
+function toggleWrap() { const m = (editor.style.whiteSpace === "pre") ? "pre-wrap" : "pre"; editor.style.whiteSpace = highlight.style.whiteSpace = m; }
+function toggleDark() { document.body.classList.toggle("dark"); }
+
+/* 7. 全イベント統合 */
+editor.oninput = () => { applyHighlight(); updateStatus(); };
+editor.onscroll = () => { highlight.scrollTop = editor.scrollTop; highlight.scrollLeft = editor.scrollLeft; };
+editor.onkeyup = updateStatus;
+editor.onclick = updateStatus;
+
+document.onkeydown = e => {
+  if (e.ctrlKey) {
+    if (e.key === "s") { e.preventDefault(); saveFile(false); }
+    if (e.key === "n") { e.preventDefault(); newFile(); }
+    if (e.key === "o") { e.preventDefault(); openFile(); }
+    if (e.key === "f") { e.preventDefault(); findText(); }
+    if (e.key === "h") { e.preventDefault(); replaceText(); }
   }
-
-  const blob = new Blob([text], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/* 折り返し */
-let wrap = true;
-function toggleWrap() {
-  wrap = !wrap;
-  document.getElementById("editor").style.whiteSpace = wrap ? "pre-wrap" : "pre";
-}
-
-/* ダークモード */
-function toggleDark() {
-  document.body.classList.toggle("dark");
-}
-
-/* Ctrl+S 保存 */
-document.addEventListener("keydown", e => {
-  if (e.ctrlKey && e.key === "s") {
-    e.preventDefault();
-    saveFile(false);
+  if (e.key === "Tab") {
+    e.preventDefault(); const s = editor.selectionStart;
+    editor.value = editor.value.substring(0, s) + "  " + editor.value.substring(editor.selectionEnd);
+    editor.selectionStart = editor.selectionEnd = s + 2;
+    applyHighlight(); updateStatus();
   }
-});
+};
 </script>
-
 </body>
 </html>
